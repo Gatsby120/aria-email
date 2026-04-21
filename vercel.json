@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "name": "sea-systematic-email-automation",
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "SEA-FIXED.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/SEA-FIXED.html"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}

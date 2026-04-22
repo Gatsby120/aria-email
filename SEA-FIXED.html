@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#030f0e"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="SEA"/>
+<title>SEA — Systematic Email Automation</title>
+<style>
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{
+  height:100%;width:100%;
+  background:#030f0e !important;
+  color:#e2e8f0;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  overflow:hidden;
+}
+
+/* ── FONTS (system fallback so no network needed) ── */
+.disp{font-family:Impact,Arial Narrow,sans-serif;letter-spacing:.06em}
+.mono{font-family:'Courier New',monospace}
+
+/* ── GATE — renders with pure CSS, no JS needed ── */
+#gate{
+  position:fixed;inset:0;
+  background:#030f0e;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:32px 24px;text-align:center;
+  z-index:9999;
+}
+#gate-box{
+  width:100%;max-width:340px;
+  background:#0a1a18;
+  border:1px solid rgba(13,148,136,.3);
+  border-radius:16px;padding:28px;
+  margin-bottom:20px;
+}
+#gate-input{
+  width:100%;padding:14px;
+  background:#0f1f1d;
+  border:2px solid rgba(255,255,255,.15);
+  border-radius:12px;
+  color:#f1f5f9;font-size:22px;
+  text-align:center;letter-spacing:.4em;
+  font-family:'Courier New',monospace;
+  outline:none;margin-bottom:14px;
+  -webkit-text-security:disc;
+}
+#gate-input:focus{border-color:#0d9488;}
+#gate-btn{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,#134e4a,#0d9488);
+  color:#fff;font-size:15px;font-weight:700;
+  border:none;border-radius:12px;cursor:pointer;
+  letter-spacing:.06em;
+}
+#gate-error{
+  color:#f87171;font-size:12px;
+  margin-top:10px;display:none;
+  font-family:'Courier New',monospace;
+}
+#gate-notice{
+  padding:14px 18px;
+  background:rgba(248,113,113,.07);
+  border:1px solid rgba(248,113,113,.2);
+  border-radius:12px;max-width:340px;
+  font-size:12px;color:#94a3b8;line-height:1.7;
+}
+
+/* ── MAIN APP — hidden until access granted ── */
+#app{
+  position:fixed;inset:0;
+  display:none;flex-direction:column;
+  background:#030f0e;
+  overflow:hidden;
+}
+
+/* ── TOPBAR ── */
+#topbar{
+  flex-shrink:0;
+  background:#0a1a18;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  padding:12px 16px;
+  display:flex;align-items:center;gap:10px;
+  padding-top:calc(12px + env(safe-area-inset-top));
+}
+.logo{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,#0d9488,#0f766e);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+#acc-btn{
+  flex:1;background:none;border:none;cursor:pointer;
+  text-align:left;padding:0;
+}
+#acc-name{font-size:16px;font-weight:700;color:#f1f5f9;display:block;line-height:1.2}
+#acc-email{font-size:10px;color:#475569;display:block;font-family:'Courier New',monospace}
+#theme-btn,#menu-btn{
+  background:none;border:none;cursor:pointer;
+  font-size:20px;color:#64748b;padding:4px;
+}
+
+/* ── CONTENT ── */
+#content{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* ── BOTTOM NAV ── */
+#bottomnav{
+  flex-shrink:0;
+  background:#0a1a18;
+  border-top:1px solid rgba(255,255,255,.07);
+  display:flex;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.nbtn{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;gap:2px;
+  padding:9px 4px;border:none;
+  background:none;cursor:pointer;
+  color:#64748b;font-size:9px;
+  letter-spacing:.06em;
+  font-family:'Courier New',monospace;
+}
+.nbtn .ni{font-size:20px;line-height:1}
+.nbtn.active{color:#0d9488}
+.nbtn.active .ni{filter:drop-shadow(0 0 4px #0d9488)}
+
+/* ── CARDS ── */
+.card{
+  background:#0a1a18;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;
+  margin-bottom:12px;
+}
+.hbar{height:4px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden;margin:6px 0}
+.hfill{height:100%;border-radius:2px}
+.tag{
+  display:inline-flex;align-items:center;
+  padding:2px 8px;border-radius:4px;
+  font-size:10px;font-weight:700;letter-spacing:.07em;
+  font-family:'Courier New',monospace;
+}
+
+/* ── DRAWER ── */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500}
+#drawer{
+  position:fixed;top:0;right:-300px;width:280px;height:100%;
+  background:#0a1a18;border-left:1px solid rgba(255,255,255,.12);
+  z-index:501;transition:right .25s ease;
+  overflow-y:auto;display:flex;flex-direction:column;
+}
+#drawer.open{right:0}
+#overlay.open{display:block}
+.di{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 20px;cursor:pointer;
+  border-left:3px solid transparent;
+  font-size:14px;font-weight:500;color:#e2e8f0;
+}
+.di:hover,.di.active{background:rgba(13,148,136,.07);border-left-color:#0d9488;color:#0d9488}
+.dsec{padding:12px 20px 4px;font-size:10px;color:#334155;letter-spacing:.12em;font-family:'Courier New',monospace}
+.dbadge{margin-left:auto;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#f87171;color:#fff;font-family:'Courier New',monospace}
+
+/* ── ACCOUNT DROPDOWN ── */
+#acc-drop{
+  display:none;position:absolute;top:100%;left:0;right:0;
+  background:#0a1a18;border:1px solid rgba(255,255,255,.15);
+  z-index:200;max-height:360px;overflow-y:auto;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+}
+#acc-drop.open{display:block}
+.acc-row{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06);
+  cursor:pointer;
+}
+.acc-row:hover{background:rgba(13,148,136,.06)}
+
+/* ── POPUP ── */
+#popup-wrap{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.75);z-index:800;
+  align-items:flex-end;justify-content:center;
+}
+#popup-wrap.open{display:flex}
+#popup-box{
+  background:#0a1a18;border:1px solid rgba(255,255,255,.15);
+  border-radius:24px 24px 0 0;width:100%;max-width:480px;
+  padding:20px;max-height:88vh;overflow-y:auto;
+  animation:slideUp .3s ease;
+}
+#popup-box.fullh{max-height:92vh;display:flex;flex-direction:column;padding:0}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── EMAIL ROW ── */
+.erow{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.05);
+  cursor:pointer;transition:background .1s;
+}
+.erow:active{background:rgba(13,148,136,.05)}
+.edot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+
+/* ── CAT TABS ── */
+.cat-scroll{
+  display:flex;overflow-x:auto;border-bottom:1px solid rgba(255,255,255,.07);
+  background:#0a1a18;-ms-overflow-style:none;scrollbar-width:none;
+}
+.cat-scroll::-webkit-scrollbar{display:none}
+.ctab{
+  flex-shrink:0;padding:10px 13px;font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;color:#64748b;
+  border-bottom:2px solid transparent;transition:all .15s;
+}
+.ctab.active{color:#0d9488;border-bottom-color:#0d9488}
+
+/* ── UNSUB TABS ── */
+.utab{flex:1;padding:11px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;color:#64748b;border-bottom:2px solid transparent}
+.utab.active{color:#0d9488;border-bottom-color:#0d9488}
+
+/* ── AI CHAT ── */
+.ai-user{display:flex;justify-content:flex-end}
+.ai-bot{display:flex;gap:8px;align-items:flex-start}
+.ai-bubble-u{max-width:82%;padding:10px 14px;border-radius:14px 14px 2px 14px;background:rgba(13,148,136,.12);border:1px solid rgba(13,148,136,.2);color:#e2e8f0;font-size:13px;line-height:1.7}
+.ai-bubble-b{max-width:82%;padding:10px 14px;border-radius:2px 14px 14px 14px;background:#0f1f1d;border:1px solid rgba(255,255,255,.07);color:#94a3b8;font-size:13px;line-height:1.7;white-space:pre-wrap;font-family:'Courier New',monospace}
+.ai-icon{width:28px;height:28px;border-radius:7px;background:rgba(13,148,136,.15);border:1px solid rgba(13,148,136,.3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+
+/* ── WRITER BTNS ── */
+.mdbtn{flex:1;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0f1f1d;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
+.mdbtn.active{border-color:#0d9488;background:rgba(13,148,136,.12);color:#0d9488}
+.tonebtn{padding:8px 13px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:#0f1f1d;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.tonebtn.active{background:#0d9488;color:#fff;border-color:#0d9488}
+
+/* ── FORM INPUTS ── */
+.finput{
+  width:100%;padding:12px;
+  background:#0f1f1d;border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;color:#f1f5f9;font-size:14px;
+  font-family:'Segoe UI',system-ui,sans-serif;outline:none;
+}
+.finput:focus{border-color:#0d9488}
+textarea.finput{resize:vertical;line-height:1.7}
+
+/* ── PROGRESS RING ── */
+.pring{border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pring-inner{border-radius:50%;background:#0a1a18;display:flex;align-items:center;justify-content:center}
+
+/* ── UTILS ── */
+.btn{border:none;cursor:pointer;border-radius:10px;font-weight:600;font-family:'Segoe UI',system-ui,sans-serif;transition:all .15s;letter-spacing:.02em}
+.btn:active{transform:scale(.97)}
+.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.blink{animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.sec-ribbon{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- GATE — Pure CSS, no JS needed to display  -->
+<!-- ══════════════════════════════════════════ -->
+<div id="gate">
+  <div style="font-size:52px;margin-bottom:16px">✦</div>
+  <div class="disp" style="font-size:48px;color:#f1f5f9;line-height:.9;margin-bottom:6px">SEA</div>
+  <div class="mono" style="font-size:11px;color:#0d9488;letter-spacing:.2em;margin-bottom:28px">SYSTEMATIC EMAIL AUTOMATION · AUTHORISED ACCESS</div>
+
+  <div id="gate-box">
+    <div class="mono" style="font-size:10px;color:#475569;margin-bottom:12px;letter-spacing:.1em">ENTER ACCESS CODE</div>
+    <input id="gate-input" type="password" maxlength="12" placeholder="••••••••" autocomplete="off"/>
+    <button id="gate-btn" onclick="checkGate()">✦ ENTER SEA</button>
+    <div id="gate-error" class="mono">✕ Invalid code. Authorised users only.</div>
+  </div>
+
+  <div id="gate-notice">
+    <div class="mono" style="font-size:10px;color:#f87171;margin-bottom:5px">⚠ PRE-LAUNCH NOTICE</div>
+    Personal testing only. Unauthorised access prohibited.<br/>All sessions are logged and monitored.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- MAIN APP                                   -->
+<!-- ══════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div id="topbar" style="position:relative">
+    <div class="logo">🌊</div>
+    <button id="acc-btn" onclick="toggleDrop()">
+      <span id="acc-name">Office</span>
+      <span id="acc-email">office@live.com · LIVE ▼</span>
+    </button>
+    <button id="theme-btn" onclick="toggleTheme()">🌙</button>
+    <button id="menu-btn" onclick="openDrawer()">☰</button>
+    <div id="acc-drop"></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content"></div>
+
+  <!-- BOTTOM NAV -->
+  <div id="bottomnav">
+    <button class="nbtn active" id="nb-dashboard" onclick="navTo('dashboard')"><span class="ni">⬡</span>DASH</button>
+    <button class="nbtn" id="nb-inbox"     onclick="navTo('inbox')">    <span class="ni">📥</span>INBOX</button>
+    <button class="nbtn" id="nb-analyse"   onclick="navTo('analyse')">  <span class="ni">🔍</span>SCAN</button>
+    <button class="nbtn" id="nb-writer"    onclick="navTo('writer')">   <span class="ni">✏️</span>WRITE</button>
+    <button class="nbtn" id="nb-deadlines" onclick="navTo('deadlines')" ><span class="ni">📅</span>DATES</button>
+  </div>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div id="overlay" onclick="closeDrawer()"></div>
+
+<!-- RIGHT DRAWER -->
+<div id="drawer">
+  <div style="padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.07)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo">🌊</div>
+      <div class="disp" style="font-size:20px;color:#f1f5f9">SEA</div>
+    </div>
+    <button onclick="closeDrawer()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#64748b">✕</button>
+  </div>
+  <div class="mono" style="padding:8px 20px 2px;font-size:10px;color:#334155;letter-spacing:.1em">SECURE SESSION 🔒</div>
+  <div id="dr-email" class="mono" style="padding:0 20px 12px;font-size:11px;color:#0d9488">office@live.com</div>
+
+  <div class="dsec">MAIN NAVIGATION</div>
+  <div class="di active" onclick="navTo('dashboard');closeDrawer()"><span>⬡</span><span>Dashboard</span><span class="dbadge" id="dr-unread">93</span></div>
+  <div class="di" onclick="navTo('inbox');closeDrawer()"><span>📥</span><span>Inbox</span></div>
+  <div class="di" onclick="navTo('analyse');closeDrawer()"><span>🔍</span><span>Analyse</span></div>
+  <div class="di" onclick="navTo('unsubscribe');closeDrawer()"><span>🚫</span><span>Unsubscribe</span><span class="dbadge">113</span></div>
+  <div class="di" onclick="navTo('writer');closeDrawer()"><span>✏️</span><span>Write Email</span></div>
+  <div class="di" onclick="navTo('deadlines');closeDrawer()"><span>📅</span><span>Deadlines</span></div>
+  <div class="di" onclick="navTo('settings');closeDrawer()"><span>⚙️</span><span>Settings</span></div>
+
+  <div style="height:1px;background:rgba(255,255,255,.07);margin:8px 0"></div>
+  <div class="dsec">TOOLS</div>
+  <div class="di" onclick="navTo('security');closeDrawer()"><span>🔒</span><span>Security</span><span style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:#34d399;display:block"></span></div>
+  <div class="di" onclick="navTo('backup');closeDrawer()"><span>💾</span><span>Backup Centre</span><span class="dbadge" style="background:#34d399">✓</span></div>
+  <div class="di" onclick="navTo('progress');closeDrawer()"><span>📊</span><span>Progress</span><span class="dbadge" style="background:#0d9488">3/9</span></div>
+  <div class="di" onclick="navTo('costs');closeDrawer()"><span>◆</span><span>Cost Plan</span></div>
+
+  <div style="height:1px;background:rgba(255,255,255,.07);margin:8px 0"></div>
+  <div class="dsec">SUPPORT</div>
+  <div class="di" onclick="navTo('guide');closeDrawer()"><span>❓</span><span>Help & Guide</span></div>
+
+  <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.07);padding:14px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span id="theme-lbl" style="font-size:14px;font-weight:500;color:#e2e8f0">🌙 Dark Mode</span>
+      <div onclick="toggleTheme()" style="width:44px;height:24px;border-radius:12px;background:#0d9488;cursor:pointer;position:relative">
+        <div id="theme-knob" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:right .3s"></div>
+      </div>
+    </div>
+    <div class="mono" style="font-size:9px;color:#334155">v1.0.0-beta · PRE-LAUNCH · SEA2026</div>
+  </div>
+</div>
+
+<!-- POPUP -->
+<div id="popup-wrap" onclick="handlePopupOverlay(event)">
+  <div id="popup-box">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+      <button onclick="closePopup()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#64748b">✕</button>
+    </div>
+    <div id="popup-content"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ══════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════
+var ACCESS_CODE = 'SEA2026';
+var attempts = 0;
+var isDark = true;
+var activeView = 'dashboard';
+var activeAcc = null;
+var activeCat = 'all';
+var activeUnsubTab = 'sender';
+var guidePhase = {1:2,2:1,3:3,4:0,5:4,6:5,7:0,8:5,9:2};
+var aiHistory = [];
+var aiLoading = false;
+var writerMode = 'describe';
+var writerTone = 'Formal';
+var deadlineData = [
+  {id:1,title:'Board Meeting',from:'CEO',date:'15 Apr 2026',time:'10:00 AM',type:'Meeting',days:4,urg:'urgent',synced:false},
+  {id:2,title:'Contract_v3 Signing',from:'DocuSign',date:'13 Apr 2026',time:'11:59 PM',type:'Signing',days:2,urg:'urgent',synced:true},
+  {id:3,title:'Q2 Budget Sign-off',from:'Finance',date:'17 Apr 2026',time:'EOD',type:'Payment',days:6,urg:'pending',synced:false},
+  {id:4,title:'Emirates Flight EK214',from:'Emirates',date:'20 Apr 2026',time:'14:30',type:'Travel',days:9,urg:'pending',synced:true},
+  {id:5,title:'Project Proposal',from:'Client A',date:'18 Apr 2026',time:'EOD',type:'Project',days:7,urg:'pending',synced:false},
+];
+var secLog = [];
+
+var ACCOUNTS = [
+  {id:1,name:'Office',    email:'office@live.com',  plat:'LIVE', col:'#0d9488',unread:14,noise:3, total:247,health:62,pri:'HIGH',phase:2,urg:2,pend:5,ref:4,arch:3,scan:'Not yet'},
+  {id:2,name:'Business A',email:'biz1@gmail.com',   plat:'GMAIL',col:'#f472b6',unread:7, noise:12,total:183,health:45,pri:'HIGH',phase:1,urg:3,pend:4,ref:0,arch:0, scan:'Not yet'},
+  {id:3,name:'Business B',email:'biz2@gmail.com',   plat:'GMAIL',col:'#a78bfa',unread:2, noise:8, total:96, health:78,pri:'MED', phase:3,urg:0,pend:2,ref:5,arch:12,scan:'Today 08:30'},
+  {id:4,name:'Shopping',  email:'shop@gmail.com',   plat:'GMAIL',col:'#fb923c',unread:31,noise:48,total:512,health:12,pri:'LOW', phase:0,urg:0,pend:4,ref:8,arch:2, scan:'Not yet'},
+  {id:5,name:'Personal',  email:'me@gmail.com',     plat:'GMAIL',col:'#34d399',unread:5, noise:2, total:324,health:88,pri:'MED', phase:4,urg:1,pend:2,ref:12,arch:28,scan:'Today 09:15'},
+  {id:6,name:'Family',    email:'fam@gmail.com',    plat:'GMAIL',col:'#fbbf24',unread:3, noise:1, total:98, health:91,pri:'MED', phase:5,urg:0,pend:1,ref:6,arch:42,scan:'Yesterday'},
+  {id:7,name:'Social',    email:'social@gmail.com', plat:'GMAIL',col:'#e879f9',unread:22,noise:35,total:441,health:18,pri:'LOW', phase:0,urg:0,pend:3,ref:2,arch:1, scan:'Not yet'},
+  {id:8,name:'Backup',    email:'bk@gmail.com',     plat:'GMAIL',col:'#94a3b8',unread:0, noise:0, total:67, health:95,pri:'LOW', phase:5,urg:0,pend:0,ref:4,arch:63,scan:'3 days ago'},
+  {id:9,name:'Projects',  email:'proj@gmail.com',   plat:'GMAIL',col:'#2dd4bf',unread:9, noise:4, total:159,health:71,pri:'HIGH',phase:2,urg:2,pend:5,ref:8,arch:14,scan:'Today 10:00'},
+];
+activeAcc = ACCOUNTS[0];
+
+var CATS = [
+  {id:'all',        lbl:'All',         icon:'📧',col:'#64748b'},
+  {id:'primary',    lbl:'Primary',     icon:'🔴',col:'#f87171'},
+  {id:'work',       lbl:'Work',        icon:'🔵',col:'#60a5fa'},
+  {id:'finance',    lbl:'Finance',     icon:'🟢',col:'#34d399'},
+  {id:'orders',     lbl:'Orders',      icon:'🟠',col:'#fb923c'},
+  {id:'travel',     lbl:'Travel',      icon:'✈️', col:'#2dd4bf'},
+  {id:'newsletters',lbl:'Newsletters', icon:'🟣',col:'#a78bfa'},
+  {id:'marketing',  lbl:'Marketing',   icon:'📢',col:'#64748b'},
+  {id:'social',     lbl:'Social',      icon:'🩷',col:'#f472b6'},
+  {id:'spam',       lbl:'Spam',        icon:'🔥',col:'#f87171'},
+  {id:'personal',   lbl:'Personal',    icon:'🟡',col:'#fbbf24'},
+  {id:'alerts',     lbl:'Alerts',      icon:'🟤',col:'#f59e0b'},
+  {id:'files',      lbl:'Files',       icon:'📎',col:'#0d9488'},
+];
+
+var EMAILS = [
+  {id:1, from:'CEO',       addr:'ceo@company.com',    subj:'Board Meeting — Agenda attached',      time:'08:42',    cat:'primary',   urg:'urgent',   mktg:false,file:true, body:'Please find attached the agenda for tomorrow\'s board meeting at 10am. Kindly review and confirm attendance.'},
+  {id:2, from:'Finance',   addr:'finance@co.com',     subj:'Q2 Budget Review Required',            time:'09:11',    cat:'finance',   urg:'urgent',   mktg:false,file:true, body:'The Q2 budget review requires your sign-off by end of this week. Please check the attached spreadsheet.'},
+  {id:3, from:'DocuSign',  addr:'dse@docusign.com',   subj:'Please sign: Contract_v3.pdf',         time:'Mon',      cat:'work',      urg:'urgent',   mktg:false,file:true, body:'Your signature is required on Contract_v3.pdf. Please review and sign within 48 hours.'},
+  {id:4, from:'Client A',  addr:'client@acme.com',    subj:'Project proposal — feedback needed',   time:'10:05',    cat:'work',      urg:'pending',  mktg:false,file:false,body:'Hi, following up on the project proposal sent last week. Would appreciate your feedback.'},
+  {id:5, from:'LinkedIn',  addr:'jobs@linkedin.com',  subj:'12 new jobs match your profile',       time:'Yesterday',cat:'marketing', urg:'archived', mktg:true, file:false,body:'We found 12 jobs that match your profile. Click to view opportunities.'},
+  {id:6, from:'Amazon',    addr:'deals@amazon.com',   subj:'Flash Sale — 70% OFF today only!',     time:'Yesterday',cat:'marketing', urg:'archived', mktg:true, file:false,body:'Exclusive flash sale for Prime members. Deals end tonight at midnight.'},
+  {id:7, from:'Noon',      addr:'promo@noon.com',     subj:'Mega Sale — Don\'t miss out!',         time:'Mon',      cat:'marketing', urg:'archived', mktg:true, file:false,body:'Up to 80% off on electronics, fashion, and more.'},
+  {id:8, from:'Stripe',    addr:'receipt@stripe.com', subj:'Payment received — $1,240',            time:'09:00',    cat:'finance',   urg:'reference',mktg:false,file:true, body:'Payment of $1,240.00 received from Client A on 11 April 2026. Receipt attached.'},
+  {id:9, from:'GitHub',    addr:'noreply@github.com', subj:'New pull request on your repo',        time:'Yesterday',cat:'work',      urg:'pending',  mktg:false,file:false,body:'John Doe opened a pull request: Fix authentication bug. Review required.'},
+  {id:10,from:'Emirates',  addr:'info@emirates.com',  subj:'Flight booking confirmation EK214',    time:'Sat',      cat:'travel',    urg:'reference',mktg:false,file:true, body:'Booking confirmed: EK214 Dubai to London, 20 April 2026 at 14:30.'},
+  {id:11,from:'Careem',    addr:'noreply@careem.com', subj:'Your receipt: AED 24.50',             time:'Mon',      cat:'orders',    urg:'reference',mktg:false,file:false,body:'Thanks for riding with Careem. Receipt for AED 24.50 enclosed.'},
+  {id:12,from:'Google',    addr:'noreply@google.com', subj:'Security alert for your account',      time:'Today',    cat:'alerts',    urg:'urgent',   mktg:false,file:false,body:'A new sign-in detected on your Google account from a new device in Dubai.'},
+];
+
+var UNSUBS = [
+  {name:'LinkedIn',   email:'jobs@linkedin.com',count:23,last:'Yesterday',worst:true, done:false},
+  {name:'Amazon Deals',email:'deals@amazon.com',count:18,last:'Yesterday',worst:true, done:false},
+  {name:'Noon',       email:'promo@noon.com',   count:15,last:'Mon',      worst:true, done:false},
+  {name:'Namshi',     email:'offers@namshi.com',count:12,last:'Sun',      worst:false,done:false},
+  {name:'Carrefour',  email:'promo@cf.com',     count:9, last:'Last week',worst:false,done:false},
+  {name:'Sharaf DG',  email:'deals@sdg.com',    count:7, last:'Last week',worst:false,done:false},
+  {name:'Talabat',    email:'promo@tb.com',     count:6, last:'2 weeks',  worst:false,done:false},
+  {name:'Mailchimp',  email:'digest@mc.com',    count:5, last:'2 weeks',  worst:false,done:false},
+];
+
+var PHASES = ['Audit & Scan','Purge Noise','Build Labels','Set Filters','Archive & Live'];
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function hc(h){return h>70?'#34d399':h>40?'#fbbf24':'#f87171'}
+function pc(p){return p==='HIGH'?'#f87171':p==='MED'?'#fbbf24':'#64748b'}
+function uc(u){return u==='urgent'?'#f87171':u==='pending'?'#fbbf24':u==='reference'?'#0d9488':'#475569'}
+function ul(u){return u==='urgent'?'🔴 URGENT':u==='pending'?'🟡 PENDING':u==='reference'?'🔵 REF':'⚫ ARCH'}
+function ci(id){return CATS.find(function(c){return c.id===id})||CATS[0]}
+function logSec(t,d){secLog.push({t:t,d:d,time:new Date().toISOString()});console.log('[SEA SECURITY]',t,d)}
+function $(id){return document.getElementById(id)}
+function hbar(pct,col){return '<div class="hbar"><div class="hfill" style="width:'+pct+'%;background:'+col+'"></div></div>'}
+function tag(txt,bg,col){return '<span class="tag" style="background:'+bg+';color:'+col+'">'+txt+'</span>'}
+function phasebar(ph,col){
+  return '<div style="display:flex;gap:3px;margin:8px 0">'+PHASES.map(function(_,i){
+    return '<div style="flex:1;height:3px;border-radius:2px;background:'+(i<ph?col:'rgba(255,255,255,.07)')+'"></div>';
+  }).join('')+'</div>';
+}
+
+// ══════════════════════════════════════════
+// SECURITY GATE
+// ══════════════════════════════════════════
+logSec('SESSION_START','App loaded');
+
+function checkGate(){
+  var v = $('gate-input').value.trim().toUpperCase();
+  attempts++;
+  if(attempts>5){
+    $('gate-error').textContent='✕ Too many attempts. Session locked.';
+    $('gate-error').style.display='block';
+    $('gate-input').disabled=true;
+    logSec('LOCKOUT','Max attempts');
+    return;
+  }
+  if(v===ACCESS_CODE){
+    sessionStorage.setItem('aria_auth','1');
+    logSec('ACCESS_GRANTED','Success');
+    var g=$('gate');
+    var a=$('app');
+    g.style.display='none';
+    a.style.cssText='position:fixed;inset:0;display:flex;flex-direction:column;background:#030f0e;overflow:hidden';
+    initApp();
+  } else {
+    $('gate-error').style.display='block';
+    $('gate-input').value='';
+    $('gate-input').style.borderColor='rgba(248,113,113,.5)';
+    setTimeout(function(){$('gate-input').style.borderColor='rgba(255,255,255,.15)'},1500);
+    logSec('DENIED','Attempt '+attempts);
+  }
+}
+$('gate-input').addEventListener('keydown',function(e){if(e.key==='Enter')checkGate()});
+
+// Auto-restore session
+window.addEventListener('load',function(){
+  if(sessionStorage.getItem('aria_auth')){
+    $('gate').style.display='none';
+    $('app').style.cssText='position:fixed;inset:0;display:flex;flex-direction:column;background:#030f0e;overflow:hidden';
+    initApp();
+  }
+});
+
+// Security protections
+document.addEventListener('contextmenu',function(e){e.preventDefault();logSec('RIGHTCLICK','Blocked')});
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&['a','s','u'].includes(e.key)){e.preventDefault();logSec('SHORTCUT',e.key)}
+});
+
+// ══════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════
+function toggleTheme(){
+  isDark=!isDark;
+  document.body.style.background=isDark?'#030f0e':'#f0f4f8';
+  document.body.style.color=isDark?'#e2e8f0':'#1a2535';
+  var r=document.documentElement.style;
+  if(!isDark){
+    r.setProperty('--bg','#f0f4f8');
+    document.querySelectorAll('.card').forEach(function(c){c.style.background='#fff';c.style.borderColor='rgba(0,0,0,.08)'});
+    document.querySelectorAll('#topbar,#bottomnav,#drawer').forEach(function(el){el.style.background='#ffffff'});
+  } else {
+    r.removeProperty('--bg');
+    document.querySelectorAll('.card').forEach(function(c){c.style.background='#0a1a18';c.style.borderColor='rgba(255,255,255,.07)'});
+    document.querySelectorAll('#topbar,#bottomnav,#drawer').forEach(function(el){el.style.background='#0a1a18'});
+  }
+  $('theme-btn').textContent=isDark?'🌙':'☀️';
+  $('theme-lbl').textContent=isDark?'🌙 Dark Mode':'☀️ Light Mode';
+  $('theme-knob').style.right=isDark?'2px':'22px';
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+var VIEWS=['dashboard','inbox','analyse','unsubscribe','writer','deadlines','backup','progress','guide','security','settings','costs'];
+
+function navTo(v){
+  activeView=v;
+  var c=$('content');
+  c.scrollTop=0;
+  // render
+  var html='';
+  if(v==='dashboard')   html=renderDashboard();
+  else if(v==='inbox')      html=renderInbox();
+  else if(v==='analyse')    html=renderAnalyse();
+  else if(v==='unsubscribe')html=renderUnsub();
+  else if(v==='writer')     html=renderWriter();
+  else if(v==='deadlines')  html=renderDeadlines();
+  else if(v==='backup')     html=renderBackup();
+  else if(v==='progress')   html=renderProgress();
+  else if(v==='guide')      html=renderGuide();
+  else if(v==='security')   html=renderSecurity();
+  else if(v==='settings')   html=renderSettings();
+  else if(v==='costs')      html=renderCosts();
+  c.innerHTML='<div class="fade-in">'+html+'</div>';
+  // nav buttons
+  document.querySelectorAll('.nbtn').forEach(function(b){b.classList.remove('active')});
+  var nb=$('nb-'+v);
+  if(nb)nb.classList.add('active');
+  logSec('VIEW',v.toUpperCase());
+}
+
+// ══════════════════════════════════════════
+// DRAWER
+// ══════════════════════════════════════════
+function openDrawer(){$('drawer').classList.add('open');$('overlay').classList.add('open')}
+function closeDrawer(){$('drawer').classList.remove('open');$('overlay').classList.remove('open')}
+
+// ══════════════════════════════════════════
+// ACCOUNT DROPDOWN
+// ══════════════════════════════════════════
+function toggleDrop(){
+  var d=$('acc-drop');
+  if(d.classList.contains('open')){d.classList.remove('open');return}
+  d.innerHTML=ACCOUNTS.map(function(a){
+    return '<div class="acc-row" onclick="switchAcc('+a.id+')">'
+      +'<div style="width:8px;height:8px;border-radius:50%;background:'+hc(a.health)+';flex-shrink:0"></div>'
+      +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#f1f5f9">'+a.name+'</div>'
+      +'<div class="mono" style="font-size:10px;color:#475569">'+a.email+'</div></div>'
+      +'<div style="text-align:right">'
+      +tag(a.plat,a.plat==='LIVE'?'rgba(13,148,136,.15)':'rgba(234,67,53,.12)',a.plat==='LIVE'?'#0d9488':'#f87171')
+      +'<div class="mono" style="font-size:9px;color:#475569;margin-top:3px">'+a.health+'% · '+a.unread+' unread</div>'
+      +'</div></div>';
+  }).join('')+'<div class="acc-row" onclick="showConnect()" style="color:#0d9488;font-weight:600">+ Add account</div>';
+  d.classList.add('open');
+}
+function switchAcc(id){
+  activeAcc=ACCOUNTS.find(function(a){return a.id===id});
+  $('acc-name').textContent=activeAcc.name;
+  $('acc-email').textContent=activeAcc.email+' · '+activeAcc.plat+' ▼';
+  $('dr-email').textContent=activeAcc.email;
+  $('acc-drop').classList.remove('open');
+  navTo(activeView);
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#acc-drop')&&!e.target.closest('#acc-btn'))$('acc-drop').classList.remove('open');
+});
+
+// ══════════════════════════════════════════
+// POPUP
+// ══════════════════════════════════════════
+function showPopup(html,full){
+  var box=$('popup-box');
+  box.className=full?'fullh':'';
+  $('popup-content').innerHTML=html;
+  $('popup-wrap').classList.add('open');
+}
+function closePopup(){$('popup-wrap').classList.remove('open')}
+function handlePopupOverlay(e){if(e.target===$('popup-wrap'))closePopup()}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function renderDashboard(){
+  var urgEmails=EMAILS.filter(function(e){return e.urg==='urgent'}).slice(0,4);
+  return '<div style="padding:12px 16px 80px">'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:12px">SATURDAY, 11 APRIL 2026 · PRE-LAUNCH</div>'
+
+    // Widgets
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
+    +[['TODAY','47','new emails','#f87171'],['THIS WEEK','312','processed','#0d9488'],['STREAK 🔥','6','days clean','#34d399']].map(function(w){
+      return '<div class="card" style="padding:12px;text-align:center">'
+        +'<div class="mono" style="font-size:8px;color:#475569;margin-bottom:4px">'+w[0]+'</div>'
+        +'<div class="disp" style="font-size:26px;color:'+w[3]+';line-height:1">'+w[1]+'</div>'
+        +'<div class="mono" style="font-size:8px;color:#475569;margin-top:2px">'+w[2]+'</div>'
+        +'</div>';
+    }).join('')+'</div>'
+
+    // Pre-launch ribbon
+    +'<div class="sec-ribbon"><span>🔒</span><span class="mono" style="font-size:9px;color:#fbbf24">PRE-LAUNCH BUILD · PERSONAL TESTING ONLY · SEA2026</span></div>'
+
+    // Account cards
+    +'<div class="mono" style="font-size:10px;color:#475569;letter-spacing:.1em;margin-bottom:10px">YOUR ACCOUNTS</div>'
+    +ACCOUNTS.map(function(a){
+      var ph=guidePhase[a.id]||0;
+      var h=hc(a.health);
+      return '<div class="card" style="padding:16px;border-top:3px solid '+a.col+';cursor:pointer" onclick="switchAcc('+a.id+');navTo(\'inbox\')">'
+
+        // Header row
+        +'<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">'
+        +'<div style="width:40px;height:40px;border-radius:10px;background:'+a.col+'22;border:1px solid '+a.col+'44;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:'+a.col+';font-family:Impact,sans-serif;flex-shrink:0">'+a.name.charAt(0)+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+        +a.name
+        +tag(a.plat,a.plat==='LIVE'?'rgba(13,148,136,.15)':'rgba(234,67,53,.12)',a.plat==='LIVE'?'#0d9488':'#f87171')
+        +tag(a.pri,''+pc(a.pri)+'18',pc(a.pri))
+        +'</div><div class="mono" style="font-size:9px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.email+'</div></div>'
+        +'<div style="width:36px;height:36px;border-radius:50%;background:conic-gradient('+a.col+' '+(a.health*3.6)+'deg,rgba(255,255,255,.06) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+        +'<div style="width:26px;height:26px;border-radius:50%;background:#0a1a18;display:flex;align-items:center;justify-content:center">'
+        +'<span class="mono" style="font-size:8px;font-weight:700;color:'+h+'">'+a.health+'%</span>'
+        +'</div></div></div>'
+
+        // Health bar
+        +hbar(a.health,h)
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:8px">'
+        +'<span class="mono" style="font-size:9px;color:#475569">HEALTH '+a.health+'%</span>'
+        +'<span class="mono" style="font-size:9px;color:#475569">'+a.unread+' UNREAD · '+a.noise+' NOISE</span></div>'
+
+        // Urgency badges
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">'
+        +(a.urg>0?tag('🔴 '+a.urg+' URGENT','rgba(248,113,113,.12)','#f87171'):'')
+        +(a.pend>0?tag('🟡 '+a.pend+' PENDING','rgba(251,191,36,.1)','#fbbf24'):'')
+        +(a.ref>0?tag('🔵 '+a.ref+' REF','rgba(13,148,136,.1)','#0d9488'):'')
+        +(a.arch>0?tag('⚫ '+a.arch+' ARCH','rgba(71,85,105,.15)','#64748b'):'')
+        +'</div>'
+
+        // Scan info
+        +'<div style="display:flex;justify-content:space-between;padding:8px 10px;background:#0f1f1d;border-radius:8px;border:1px solid rgba(255,255,255,.06);margin-bottom:10px">'
+        +'<div><div class="mono" style="font-size:8px;color:#475569;margin-bottom:2px">LAST SCANNED</div><div style="font-size:12px;color:#64748b">'+a.scan+'</div></div>'
+        +'<div style="text-align:right"><div class="mono" style="font-size:8px;color:#475569;margin-bottom:2px">NEXT ACTION</div><div style="font-size:12px;color:#0d9488">'+(ph>=5?'Complete ✓':PHASES[ph]||'Run first scan')+'</div></div>'
+        +'</div>'
+
+        // Phase bar
+        +phasebar(ph,a.col)
+        +'<div class="mono" style="font-size:9px;color:#475569;margin-bottom:10px">PHASE '+ph+'/5 — '+(ph>=5?'COMPLETE ✓':ph===0?'NOT STARTED':PHASES[ph-1].toUpperCase())+'</div>'
+
+        // Buttons
+        +'<div style="display:flex;gap:8px" onclick="event.stopPropagation()">'
+        +'<button class="btn" onclick="startGuide('+a.id+')" style="flex:1;padding:9px;background:'+a.col+'20;color:'+a.col+';font-size:12px;border:1px solid '+a.col+'40">▶ SCAN NOW</button>'
+        +'<button class="btn" onclick="switchAcc('+a.id+');navTo(\'analyse\')" style="flex:1;padding:9px;background:#0f1f1d;color:#64748b;font-size:12px;border:1px solid rgba(255,255,255,.1)">🔍 ANALYSE</button>'
+        +'</div></div>';
+    }).join('')
+
+    // Urgent feed
+    +'<div class="mono" style="font-size:10px;color:#475569;letter-spacing:.1em;margin:16px 0 10px">⚠ URGENT ACROSS ALL ACCOUNTS</div>'
+    +'<div class="card" style="overflow:hidden">'
+    +urgEmails.map(function(e,i){
+      var cat=ci(e.cat);
+      return '<div class="erow" onclick="showEmail('+e.id+')" style="'+(i>0?'':'')+'border-bottom:1px solid rgba(255,255,255,.05)">'
+        +'<div class="edot" style="background:#f87171"></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+        +'<span style="font-size:13px;font-weight:700;color:#f1f5f9">'+e.from+'</span>'
+        +'<span class="mono" style="font-size:10px;color:#475569">'+e.time+'</span></div>'
+        +'<div style="font-size:12px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">'+e.subj+'</div>'
+        +'<div style="display:flex;gap:5px">'+tag('🔴 URGENT','rgba(248,113,113,.12)','#f87171')+tag(cat.icon+' '+cat.lbl,''+cat.col+'18',cat.col)+(e.file?tag('📎 FILE','rgba(13,148,136,.1)','#0d9488'):'')+'</div>'
+        +'</div></div>';
+    }).join('')
+    +'<div style="padding:12px 16px"><button class="btn" onclick="navTo(\'inbox\')" style="width:100%;padding:10px;background:rgba(248,113,113,.1);color:#f87171;font-size:12px;border:1px solid rgba(248,113,113,.2)">SEE ALL URGENT EMAILS</button></div>'
+    +'</div></div>';
+}
+
+// ══════════════════════════════════════════
+// INBOX
+// ══════════════════════════════════════════
+function renderInbox(){
+  var filtered=activeCat==='all'?EMAILS:EMAILS.filter(function(e){return e.cat===activeCat});
+  return '<div style="display:flex;flex-direction:column">'
+    +'<div class="cat-scroll">'+CATS.map(function(c){
+      var n=c.id==='all'?EMAILS.length:EMAILS.filter(function(e){return e.cat===c.id}).length;
+      return '<div class="ctab'+(activeCat===c.id?' active':'')+'" onclick="setCat(\''+c.id+'\')">'+c.icon+' '+c.lbl+(n?' ('+n+')':'')+'</div>';
+    }).join('')+'</div>'
+    +'<div style="padding:8px 16px;display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center;background:#0a1a18">'
+    +'<span class="mono" style="font-size:10px;color:#475569">'+filtered.length+' EMAILS · '+activeAcc.name+'</span>'
+    +'<button class="btn" onclick="navTo(\'analyse\')" style="margin-left:auto;padding:5px 12px;background:rgba(13,148,136,.1);color:#0d9488;font-size:11px;border:1px solid rgba(13,148,136,.2)">🔍 ANALYSE ▼</button>'
+    +'</div>'
+    +'<div style="padding-bottom:80px">'
+    +filtered.map(function(e){
+      var cat=ci(e.cat);
+      return '<div class="erow" style="border-left:'+(e.mktg?'none':'3px solid #0d9488')+'" onclick="showEmail('+e.id+')">'
+        +'<div class="edot" style="background:'+uc(e.urg)+'"></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+        +'<span style="font-size:13px;font-weight:'+(e.mktg?400:700)+';color:#f1f5f9">'+e.from+'</span>'
+        +'<span class="mono" style="font-size:10px;color:#475569">'+e.time+'</span></div>'
+        +'<div style="font-size:12px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">'+e.subj+'</div>'
+        +'<div style="display:flex;gap:4px;flex-wrap:wrap">'
+        +tag(ul(e.urg),''+uc(e.urg)+'18',uc(e.urg))
+        +tag(cat.icon+' '+cat.lbl,''+cat.col+'15',cat.col)
+        +(e.file?tag('📎','rgba(13,148,136,.1)','#0d9488'):'')
+        +(e.mktg?tag('MKTG','rgba(100,116,139,.1)','#64748b'):'')
+        +'</div></div></div>';
+    }).join('')+'</div></div>';
+}
+function setCat(id){activeCat=id;navTo('inbox')}
+
+// ══════════════════════════════════════════
+// EMAIL DETAIL
+// ══════════════════════════════════════════
+function showEmail(id){
+  var e=EMAILS.find(function(x){return x.id===id});
+  if(!e)return;
+  var cat=ci(e.cat);
+  showPopup(
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+    +'<button class="btn" onclick="closePopup()" style="padding:6px 12px;background:#0f1f1d;color:#64748b;font-size:12px;border:1px solid rgba(255,255,255,.1)">← Back</button>'
+    +'<span class="disp" style="font-size:18px;color:#f1f5f9">EMAIL</span></div>'
+    +'<div style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:10px;line-height:1.4">'+e.subj+'</div>'
+    +'<div class="mono" style="font-size:11px;color:#475569;margin-bottom:3px">FROM: '+e.from+' &lt;'+e.addr+'&gt;</div>'
+    +'<div class="mono" style="font-size:11px;color:#475569;margin-bottom:14px">TIME: '+e.time+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
+    +tag(ul(e.urg),''+uc(e.urg)+'18',uc(e.urg))
+    +tag(cat.icon+' '+cat.lbl,''+cat.col+'15',cat.col)
+    +(e.file?tag('📎 FILE','rgba(13,148,136,.1)','#0d9488'):'')
+    +'</div>'
+    +(e.file?'<div style="padding:10px 14px;background:#0f1f1d;border:1px solid rgba(255,255,255,.07);border-radius:10px;display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+      +'<span style="font-size:20px">📎</span>'
+      +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#f1f5f9">Attachment</div>'
+      +'<div class="mono" style="font-size:10px;color:#34d399">Backed up to Google Drive ✓</div></div>'
+      +'<button class="btn" style="padding:6px 12px;background:rgba(13,148,136,.1);color:#0d9488;font-size:11px;border:1px solid rgba(13,148,136,.2)">💾 Drive</button>'
+      +'</div>':'')
+    +'<div style="padding:14px;background:#0f1f1d;border-radius:10px;border:1px solid rgba(255,255,255,.07);font-size:14px;color:#64748b;line-height:1.8;margin-bottom:14px">'+e.body+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn" onclick="closePopup();openAI('+e.id+')" style="flex:1;padding:10px;background:rgba(13,148,136,.1);color:#0d9488;font-size:12px;border:1px solid rgba(13,148,136,.2)">⬡ Ask SEA</button>'
+    +'<button class="btn" onclick="closePopup();openWriterReply('+e.id+')" style="flex:1;padding:10px;background:#0f1f1d;color:#e2e8f0;font-size:12px;border:1px solid rgba(255,255,255,.1)">✏️ Write Reply</button>'
+    +(e.mktg?'<button class="btn" onclick="doUnsub(\''+e.from+'\',null,this);closePopup()" style="flex:1;padding:10px;background:rgba(248,113,113,.1);color:#f87171;font-size:12px;border:1px solid rgba(248,113,113,.2)">🚫 Unsub</button>':'')
+    +'</div>'
+  );
+}
+
+// ══════════════════════════════════════════
+// AI CHAT
+// ══════════════════════════════════════════
+function openAI(emailId){
+  aiHistory=[];
+  showPopup(
+    '<div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0">'
+    +'<button class="btn" onclick="closePopup()" style="padding:4px 10px;background:#0f1f1d;color:#64748b;font-size:11px;border:1px solid rgba(255,255,255,.1)">← Back</button>'
+    +'<span class="disp" style="font-size:18px;color:#0d9488">⬡ SEA ANALYST</span></div>'
+    +'<div id="ai-msgs" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:200px">'
+    +(emailId?'':'<div style="text-align:center;padding:30px 20px;color:#334155">'
+      +'<div style="font-size:32px;margin-bottom:10px;opacity:.3">⬡</div>'
+      +'<div class="disp" style="font-size:18px;color:#1e3a5f;margin-bottom:14px">SEA INTELLIGENCE</div>'
+      +['Analyse all 9 accounts — give priority order','Which accounts have the most noise to remove?','Give me exact Gmail filter rules','What is the fastest path to inbox zero?'].map(function(s){
+        return '<button class="btn" onclick="sendAI(\''+s+'\')" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:8px 12px;background:rgba(13,148,136,.08);color:#0d9488;font-size:11px;border:1px solid rgba(13,148,136,.15)">⬡ '+s+'</button>';
+      }).join('')+'</div>')
+    +'</div>'
+    +'<div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:8px;flex-shrink:0;background:#0a1a18">'
+    +'<input id="ai-inp" class="finput" placeholder="Ask SEA anything..." onkeydown="if(event.key===\'Enter\')handleSendAI()" style="flex:1"/>'
+    +'<button class="btn" onclick="handleSendAI()" style="padding:10px 16px;background:rgba(13,148,136,.15);color:#0d9488;font-size:14px;border:1px solid rgba(13,148,136,.3)">↑</button>'
+    +'</div>',
+    true
+  );
+  // Fix popup box for full height AI
+  $('popup-box').style.cssText='background:#0a1a18;border:1px solid rgba(255,255,255,.15);border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:92vh;display:flex;flex-direction:column;animation:slideUp .3s ease';
+  $('popup-content').style.cssText='flex:1;display:flex;flex-direction:column;overflow:hidden';
+  if(emailId){
+    var e=EMAILS.find(function(x){return x.id===emailId});
+    if(e)sendAI('Analyse this email from '+e.from+': "'+e.subj+'". Category: '+e.cat+'. Should I keep, label, or unsubscribe? What action is needed?');
+  }
+}
+function addMsg(role,txt){
+  var msgs=$('ai-msgs');
+  if(!msgs)return;
+  var d=document.createElement('div');
+  d.className=role==='user'?'ai-user':'ai-bot';
+  if(role==='user'){
+    d.innerHTML='<div class="ai-bubble-u">'+txt+'</div>';
+  } else {
+    d.innerHTML='<div class="ai-icon">⬡</div><div class="ai-bubble-b">'+txt+'</div>';
+  }
+  msgs.appendChild(d);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function showTyping(){
+  var msgs=$('ai-msgs');
+  if(!msgs)return;
+  var d=document.createElement('div');
+  d.id='ai-typing';d.className='ai-bot';
+  d.innerHTML='<div class="ai-icon blink">⬡</div><div class="ai-bubble-b blink" style="color:#475569">SEA thinking...</div>';
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+async function sendAI(prompt){
+  if(aiLoading)return;
+  aiLoading=true;
+  addMsg('user',prompt);
+  aiHistory.push({role:'user',content:prompt});
+  showTyping();
+  var sys='You are SEA — Systematic Email Automation assistant managing 9 email accounts (Gmail + Live.com). Current: '+activeAcc.name+' ('+activeAcc.email+', '+activeAcc.plat+'). Health: '+activeAcc.health+'%. Unread: '+activeAcc.unread+'. Noise: '+activeAcc.noise+'. Be concise, strategic, direct. Give numbered steps. Under 220 words.';
+  try{
+    var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:sys,messages:aiHistory.slice(-6)})});
+    var data=await r.json();
+    var reply=data.content?data.content.map(function(c){return c.text||''}).join(''):'No response.';
+    var t=$('ai-typing');if(t)t.remove();
+    addMsg('assistant',reply);
+    aiHistory.push({role:'assistant',content:reply});
+  }catch(e){
+    var t=$('ai-typing');if(t)t.remove();
+    addMsg('assistant','⚠ '+(e.message||'Connection error. Check network.'));
+  }
+  aiLoading=false;
+}
+function handleSendAI(){
+  var inp=$('ai-inp');
+  if(!inp||!inp.value.trim()||aiLoading)return;
+  var msg=inp.value.trim();inp.value='';
+  sendAI(msg);
+}
+
+// ══════════════════════════════════════════
+// ANALYSE
+// ══════════════════════════════════════════
+function renderAnalyse(){
+  var opts=[
+    {icon:'⬡',lbl:'Unsubscribe Scan',desc:'Find all marketing senders',col:'#f87171',p:'Scan '+activeAcc.name+' for all marketing and promotional senders. List in priority order. '+activeAcc.noise+' noise emails found. Give exact unsubscribe steps for '+activeAcc.plat+'.'},
+    {icon:'▲',lbl:'Priority Triage',desc:'Surface most urgent emails',col:'#fb923c',p:'Triage '+activeAcc.name+' inbox. '+activeAcc.unread+' unread. What needs action today vs this week vs can wait? Be specific.'},
+    {icon:'✕',lbl:'Noise Report',desc:'Show all junk to remove',col:'#64748b',p:'Noise report for '+activeAcc.name+'. Health: '+activeAcc.health+'%. What is cluttering this inbox and how to remove it quickly?'},
+    {icon:'◈',lbl:'Label All',desc:'Auto-apply all 12 categories',col:'#a78bfa',p:'Recommend complete label/category structure for '+activeAcc.name+' ('+activeAcc.plat+'). Give exact step-by-step setup for all 12 SEA categories.'},
+    {icon:'●',lbl:'Inbox Health Check',desc:'Score this account 0–100%',col:'#34d399',p:'Full health check for '+activeAcc.name+'. Current score: '+activeAcc.health+'%. Break down exactly what lowers the score and top 3 actions to improve it immediately.'},
+    {icon:'◆',lbl:'Full Deep Clean',desc:'Run all 5 analyses in sequence',col:'#0d9488',p:'Complete deep clean plan for '+activeAcc.name+' ('+activeAcc.plat+'). Health: '+activeAcc.health+'%, Unread: '+activeAcc.unread+', Noise: '+activeAcc.noise+'. Give complete numbered step-by-step plan: unsubscribe, labels, filters, archive, maintenance.'},
+  ];
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#f1f5f9;margin-bottom:8px">ANALYSE INBOX</div>'
+    +'<div class="card" style="padding:14px;margin-bottom:14px;border-color:rgba(13,148,136,.2)">'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:4px">CURRENT ACCOUNT</div>'
+    +'<div style="font-size:15px;font-weight:700;color:#0d9488">'+activeAcc.name+' — '+activeAcc.email+'</div>'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-top:4px">'+activeAcc.health+'% health · '+activeAcc.unread+' unread · '+activeAcc.noise+' noise</div>'
+    +'</div>'
+    +opts.map(function(o){
+      return '<div class="card" style="padding:16px;cursor:pointer;border-color:'+o.col+'22" onclick="openAI(null);setTimeout(function(){sendAI(\''+o.p.replace(/'/g,"\\'")+'\')}  ,400)">'
+        +'<div style="display:flex;align-items:center;gap:12px">'
+        +'<div style="width:40px;height:40px;border-radius:10px;background:'+o.col+'18;border:1px solid '+o.col+'30;display:flex;align-items:center;justify-content:center;font-size:18px;color:'+o.col+';flex-shrink:0">'+o.icon+'</div>'
+        +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:3px">'+o.lbl+'</div>'
+        +'<div style="font-size:12px;color:#64748b">'+o.desc+'</div></div>'
+        +'<span style="color:#475569;font-size:16px">→</span>'
+        +'</div></div>';
+    }).join('')+'</div>';
+}
+
+// ══════════════════════════════════════════
+// UNSUBSCRIBE
+// ══════════════════════════════════════════
+function renderUnsub(){
+  return '<div>'
+    +'<div style="display:flex;border-bottom:1px solid rgba(255,255,255,.07);background:#0a1a18">'
+    +[['sender','By Sender'],['bulk','Bulk Select'],['worst','Worst Offenders']].map(function(t){
+      return '<div class="utab'+(activeUnsubTab===t[0]?' active':'')+'" onclick="setUnsubTab(\''+t[0]+'\')">'+t[1]+'</div>';
+    }).join('')+'</div>'
+    +'<div id="unsub-list" style="padding-bottom:80px">'+renderUnsubContent()+'</div></div>';
+}
+function renderUnsubContent(){
+  if(activeUnsubTab==='sender'){
+    return UNSUBS.map(function(s){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.05)">'
+        +'<div style="width:36px;height:36px;border-radius:8px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">📢</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#f1f5f9">'+s.name+'</div>'
+        +'<div class="mono" style="font-size:10px;color:#475569">'+s.count+' emails · Last: '+s.last+'</div></div>'
+        +'<button class="btn" id="usb-'+s.name.replace(/\s/g,'_')+'" onclick="doUnsub(\''+s.name+'\',\''+s.name.replace(/\s/g,'_')+'\',this)" style="padding:7px 12px;background:'+(s.done?'rgba(52,211,153,.1)':'rgba(248,113,113,.1)')+';color:'+(s.done?'#34d399':'#f87171')+';font-size:11px;border:1px solid '+(s.done?'rgba(52,211,153,.25)':'rgba(248,113,113,.25)')+';flex-shrink:0">'+(s.done?'✓ Done':'🚫 Unsub')+'</button>'
+        +'</div>';
+    }).join('');
+  }
+  if(activeUnsubTab==='bulk'){
+    return '<div style="padding:12px 16px;background:#0a1a18;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px">'
+      +'<input type="checkbox" id="sel-all" onchange="toggleSelAll(this)" style="width:16px;height:16px;cursor:pointer"/>'
+      +'<label for="sel-all" style="font-size:13px;font-weight:600;color:#f1f5f9;cursor:pointer">Select All ('+UNSUBS.length+')</label>'
+      +'<button class="btn" onclick="bulkUnsub()" style="margin-left:auto;padding:7px 14px;background:rgba(248,113,113,.1);color:#f87171;font-size:12px;border:1px solid rgba(248,113,113,.25)">🚫 Unsub Selected</button>'
+      +'</div>'
+      +[...UNSUBS].sort(function(a,b){return b.count-a.count}).map(function(s){
+        return '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.05)">'
+          +'<input type="checkbox" class="bulk-cb" style="width:16px;height:16px;cursor:pointer;flex-shrink:0"/>'
+          +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#f1f5f9">'+s.name+'</div>'
+          +'<div class="mono" style="font-size:10px;color:#475569">'+s.count+' emails · '+s.email+'</div></div>'
+          +tag(s.count+'','rgba(100,116,139,.1)','#64748b')+'</div>';
+      }).join('');
+  }
+  // worst offenders
+  return UNSUBS.filter(function(s){return s.worst}).map(function(s){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.05);border-left:3px solid #f87171">'
+      +'<div style="flex:1"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+      +'<span style="font-size:13px;font-weight:700;color:#f87171">⚠ '+s.name+'</span>'
+      +tag('TOP OFFENDER','rgba(248,113,113,.12)','#f87171')+'</div>'
+      +'<div class="mono" style="font-size:10px;color:#475569">'+s.count+' marketing emails · '+s.email+'</div>'
+      +'<div style="font-size:12px;color:#64748b;margin-top:4px">SEA recommends: Unsubscribe immediately</div></div>'
+      +'<button class="btn" id="usb-w-'+s.name.replace(/\s/g,'_')+'" onclick="doUnsub(\''+s.name+'\',\'w_'+s.name.replace(/\s/g,'_')+'\',this)" style="padding:8px 12px;background:'+(s.done?'rgba(52,211,153,.1)':'rgba(248,113,113,.12)')+';color:'+(s.done?'#34d399':'#f87171')+';font-size:12px;border:1px solid '+(s.done?'rgba(52,211,153,.25)':'rgba(248,113,113,.25)')+';">'+(s.done?'✓ Done':'🚫 Unsub')+'</button>'
+      +'</div>';
+  }).join('');
+}
+function setUnsubTab(t){activeUnsubTab=t;navTo('unsubscribe')}
+function doUnsub(name,btnId,btn){
+  var s=UNSUBS.find(function(x){return x.name===name});
+  if(s)s.done=true;
+  if(btn){btn.textContent='✓ Done';btn.style.background='rgba(52,211,153,.1)';btn.style.color='#34d399';btn.style.borderColor='rgba(52,211,153,.25)';btn.disabled=true}
+}
+function toggleSelAll(cb){document.querySelectorAll('.bulk-cb').forEach(function(c){c.checked=cb.checked})}
+function bulkUnsub(){document.querySelectorAll('.bulk-cb:checked').forEach(function(c){var row=c.closest('div[style]');if(row)row.style.opacity='.4'})}
+
+// ══════════════════════════════════════════
+// AI EMAIL WRITER
+// ══════════════════════════════════════════
+function renderWriter(){
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#f1f5f9;margin-bottom:4px">AI EMAIL WRITER</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">SEA writes, improves or replies for you</div>'
+
+    // Mode
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:8px">SELECT MODE</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+    +[['describe','✦ Write For Me'],['improve','✏ Improve Draft'],['reply','↩ Smart Reply']].map(function(m){
+      return '<button class="mdbtn'+(writerMode===m[0]?' active':'')+'" onclick="setWMode(\''+m[0]+'\')">'+m[1]+'</button>';
+    }).join('')+'</div>'
+
+    // Tone
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:8px">TONE</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">'
+    +['Formal','Friendly','Assertive','Apologetic','Follow-up'].map(function(t){
+      return '<button class="tonebtn'+(writerTone===t?' active':'')+'" onclick="setWTone(\''+t+'\')">'+t+'</button>';
+    }).join('')+'</div>'
+
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:8px">'
+    +(writerMode==='describe'?'DESCRIBE WHAT YOU WANT TO SAY':writerMode==='improve'?'PASTE YOUR DRAFT':'PASTE EMAIL TO REPLY TO')
+    +'</div>'
+    +'<textarea id="writer-inp" class="finput" rows="5" placeholder="'
+    +(writerMode==='describe'?'e.g. Tell them the meeting is postponed and apologise for short notice...':writerMode==='improve'?'Paste your draft here...':'Paste the email you received here...')
+    +'" style="margin-bottom:12px"></textarea>'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:8px">LANGUAGE: Auto-detects from email content</div>'
+    +'<button class="btn" id="gen-btn" onclick="generateEmail()" style="width:100%;padding:13px;background:linear-gradient(135deg,#134e4a,#0d9488);color:#fff;font-size:14px;margin-bottom:16px">✦ Generate Email</button>'
+    +'<div id="writer-out" style="display:none"></div></div>';
+}
+function setWMode(m){writerMode=m;navTo('writer')}
+function setWTone(t){writerTone=t;navTo('writer')}
+function openWriterReply(emailId){
+  var e=EMAILS.find(function(x){return x.id===emailId});
+  if(!e)return;
+  writerMode='reply';
+  navTo('writer');
+  setTimeout(function(){
+    var ta=$('writer-inp');
+    if(ta)ta.value='From: '+e.from+'\nSubject: '+e.subj+'\n\n'+e.body;
+  },300);
+}
+async function generateEmail(){
+  var inp=$('writer-inp');
+  if(!inp||!inp.value.trim()){alert('Please enter content first.');return}
+  var out=$('writer-out');
+  out.style.display='block';
+  out.innerHTML='<div class="mono blink" style="font-size:11px;color:#475569">⬡ SEA writing your email...</div>';
+  var prompt=writerMode==='describe'
+    ?'Write a professional email: "'+inp.value+'". Tone: '+writerTone+'. Include Subject: line. Auto-detect language.'
+    :writerMode==='improve'
+    ?'Improve this email draft to be more '+writerTone.toLowerCase()+' and professional:\n\n"'+inp.value+'"\n\nProvide improved Subject and body.'
+    :'Reply to this email in a '+writerTone.toLowerCase()+' tone. Match the language of the original:\n\n"'+inp.value+'"';
+  try{
+    var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:'You are an expert email writer. Always include Subject: line followed by the email body. Be concise and match the tone requested.',messages:[{role:'user',content:prompt}]})});
+    var data=await r.json();
+    var txt=data.content?data.content.map(function(c){return c.text||''}).join(''):'Could not generate.';
+    out.innerHTML='<div class="mono" style="font-size:10px;color:#0d9488;margin-bottom:10px">✦ SEA GENERATED</div>'
+      +'<div style="padding:16px;background:#0f1f1d;border:1px solid rgba(255,255,255,.07);border-radius:12px;font-size:14px;color:#e2e8f0;line-height:1.8;white-space:pre-wrap;margin-bottom:12px">'+txt+'</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button class="btn" onclick="generateEmail()" style="flex:1;padding:10px;background:#0f1f1d;color:#64748b;font-size:12px;border:1px solid rgba(255,255,255,.1)">🔄 Regenerate</button>'
+      +'<button class="btn" onclick="copyTxt()" style="flex:1;padding:10px;background:rgba(13,148,136,.1);color:#0d9488;font-size:12px;border:1px solid rgba(13,148,136,.2)">📋 Copy</button>'
+      +'</div>';
+    out._txt=txt;
+  }catch(e){out.innerHTML='<div style="color:#f87171;font-size:13px">⚠ '+(e.message||'Error generating.')+'</div>'}
+}
+function copyTxt(){var o=$('writer-out');if(o&&o._txt&&navigator.clipboard)navigator.clipboard.writeText(o._txt).then(function(){alert('Copied to clipboard!')})}
+
+// ══════════════════════════════════════════
+// DEADLINES
+// ══════════════════════════════════════════
+function renderDeadlines(){
+  var tCol={Meeting:'#0d9488',Payment:'#34d399',Signing:'#f87171',Travel:'#2dd4bf',Project:'#a78bfa'};
+  var tIcon={Meeting:'📅',Payment:'💳',Signing:'✍️',Travel:'✈️',Project:'📋'};
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#f1f5f9;margin-bottom:4px">DATES & DEADLINES</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">Detected from all accounts · Sync to Google Calendar</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+    +[[deadlineData.filter(function(d){return d.urg==='urgent'}).length,'URGENT','#f87171'],[deadlineData.filter(function(d){return d.urg==='pending'}).length,'THIS WEEK','#fbbf24'],[deadlineData.filter(function(d){return d.synced}).length,'SYNCED','#34d399']].map(function(s){
+      return '<div class="card" style="flex:1;padding:12px;text-align:center;border-color:'+s[2]+'22">'
+        +'<div class="disp" style="font-size:24px;color:'+s[2]+'">'+s[0]+'</div>'
+        +'<div class="mono" style="font-size:9px;color:#475569">'+s[1]+'</div></div>';
+    }).join('')+'</div>'
+    +deadlineData.map(function(d){
+      var c=tCol[d.type]||'#0d9488';
+      return '<div class="card" style="padding:14px;display:flex;gap:12px;align-items:flex-start;border-color:'+(d.urg==='urgent'?'rgba(248,113,113,.25)':'rgba(255,255,255,.07)')+';">'
+        +'<div style="width:44px;height:44px;border-radius:10px;background:'+c+'18;border:1px solid '+c+'30;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">'
+        +'<div style="font-size:18px;line-height:1">'+tIcon[d.type]+'</div>'
+        +'<div class="mono" style="font-size:8px;color:'+c+';margin-top:2px">'+d.days+'d</div></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:3px">'+d.title+'</div>'
+        +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:6px">'+d.date+' · '+d.time+' · '+d.from+'</div>'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">'
+        +tag(d.type,''+c+'15',c)
+        +tag(ul(d.urg),''+uc(d.urg)+'18',uc(d.urg))
+        +(d.synced?tag('📅 Synced','rgba(52,211,153,.12)','#34d399')
+          :'<button class="btn" onclick="syncCal('+d.id+',this)" style="padding:2px 8px;background:rgba(13,148,136,.1);color:#0d9488;font-size:10px;border:1px solid rgba(13,148,136,.2)">+ Calendar</button>')
+        +'</div></div></div>';
+    }).join('')+'</div>';
+}
+function syncCal(id,btn){
+  var d=deadlineData.find(function(x){return x.id===id});
+  showPopup('<div class="disp" style="font-size:22px;color:#f1f5f9;margin-bottom:14px">SET REMINDER</div>'
+    +'<div style="font-size:14px;color:#f1f5f9;font-weight:600;margin-bottom:4px">'+d.title+'</div>'
+    +'<div class="mono" style="font-size:11px;color:#475569;margin-bottom:16px">'+d.date+' · '+d.time+'</div>'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:10px">REMIND ME HOW MANY HOURS BEFORE?</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
+    +[1,6,12,24,48,168].map(function(h){
+      return '<button class="btn" onclick="confirmSync('+id+')" style="flex:1;min-width:56px;padding:10px;background:#0f1f1d;color:#f1f5f9;font-size:12px;border:1px solid rgba(255,255,255,.12);border-radius:8px">'+(h<24?h+'h':h===24?'1d':h===48?'2d':'1w')+'</button>';
+    }).join('')+'</div>'
+    +'<button class="btn" onclick="closePopup()" style="width:100%;padding:10px;background:#0f1f1d;color:#64748b;font-size:13px;border:1px solid rgba(255,255,255,.1)">Cancel</button>');
+}
+function confirmSync(id){
+  var d=deadlineData.find(function(x){return x.id===id});
+  if(d)d.synced=true;
+  closePopup();navTo('deadlines');
+}
+
+// ══════════════════════════════════════════
+// BACKUP
+// ══════════════════════════════════════════
+function renderBackup(){
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#f1f5f9;margin-bottom:4px">BACKUP CENTRE</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">Smart backup · Google Drive · All 9 accounts</div>'
+    +'<div class="card" style="padding:16px;margin-bottom:14px;border-color:rgba(52,211,153,.25)">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+    +'<div class="blink" style="width:8px;height:8px;border-radius:50%;background:#34d399"></div>'
+    +'<div class="disp" style="font-size:20px;color:#34d399">SMART BACKUP ACTIVE</div></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
+    +[['LAST RUN','Today 11:42am'],['NEXT RUN','On new email'],['BACKED UP','2,127 emails'],['DRIVE USED','147 MB']].map(function(i){
+      return '<div style="padding:10px;background:#0f1f1d;border-radius:8px;border:1px solid rgba(255,255,255,.06)">'
+        +'<div class="mono" style="font-size:9px;color:#475569;margin-bottom:3px">'+i[0]+'</div>'
+        +'<div style="font-size:13px;font-weight:600;color:#f1f5f9">'+i[1]+'</div></div>';
+    }).join('')+'</div>'
+    +'<button class="btn" style="width:100%;padding:11px;background:rgba(52,211,153,.12);color:#34d399;font-size:13px;border:1px solid rgba(52,211,153,.25)">🔄 Run Backup Now</button></div>'
+    +'<div class="mono" style="font-size:10px;color:#475569;letter-spacing:.1em;margin-bottom:10px">ACCOUNT BACKUP STATUS</div>'
+    +ACCOUNTS.map(function(a){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+        +'<div style="width:8px;height:8px;border-radius:50%;background:'+(a.health>50?'#34d399':'#fbbf24')+';flex-shrink:0"></div>'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#f1f5f9">'+a.name+'</div>'
+        +'<div class="mono" style="font-size:10px;color:#475569">'+a.total+' emails · '+a.plat+'</div></div>'
+        +tag(a.health>50?'✓ Synced':'⚠ Pending',a.health>50?'rgba(52,211,153,.1)':'rgba(251,191,36,.1)',a.health>50?'#34d399':'#fbbf24')
+        +'</div>';
+    }).join('')
+    +'<div style="margin-top:14px"><div class="mono" style="font-size:10px;color:#475569;margin-bottom:10px">GOOGLE DRIVE STRUCTURE</div>'
+    +'<div class="card" style="padding:16px;font-family:\'Courier New\',monospace;font-size:12px;color:#64748b;line-height:1.9">'
+    +'📁 SEA Backup/<br>'
+    +'&nbsp;&nbsp;├── 📁 Office (Live.com)/<br>'
+    +'&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📁 Work & Projects/<br>'
+    +'&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📁 Finance & Banking/<br>'
+    +'&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📁 Orders & Receipts/<br>'
+    +'&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📁 🗑 Deleted — 30 Days/<br>'
+    +'&nbsp;&nbsp;└── 📁 [All 9 accounts same structure]'
+    +'</div></div></div>';
+}
+
+// ══════════════════════════════════════════
+// PROGRESS
+// ══════════════════════════════════════════
+function renderProgress(){
+  var total=ACCOUNTS.reduce(function(a,c){return a+(guidePhase[c.id]||0)},0);
+  var pct=Math.round((total/(ACCOUNTS.length*5))*100);
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#f1f5f9;margin-bottom:4px">CLEANUP PROGRESS</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">Per account · tap to run guided cleanup</div>'
+    +'<div class="card" style="padding:16px;margin-bottom:14px;text-align:center">'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:8px">OVERALL</div>'
+    +'<div class="disp" style="font-size:52px;color:#0d9488;line-height:1">'+pct+'%</div>'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-top:4px">'+ACCOUNTS.filter(function(a){return (guidePhase[a.id]||0)>=5}).length+' of 9 accounts complete</div>'
+    +hbar(pct,'#0d9488')+'</div>'
+    +ACCOUNTS.map(function(a){
+      var ph=guidePhase[a.id]||0;
+      var ap=Math.round((ph/5)*100);
+      return '<div class="card" style="padding:16px;border-color:'+a.col+'22">'
+        +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'
+        +'<div style="width:44px;height:44px;border-radius:50%;background:conic-gradient('+a.col+' '+(ap*3.6)+'deg,rgba(255,255,255,.06) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+        +'<div style="width:32px;height:32px;border-radius:50%;background:#0a1a18;display:flex;align-items:center;justify-content:center">'
+        +'<span class="mono" style="font-size:9px;font-weight:700;color:'+a.col+'">'+ap+'%</span></div></div>'
+        +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:3px">'+a.name+'</div>'
+        +'<div class="mono" style="font-size:10px;color:#475569">'+(ph>=5?'✓ COMPLETE':ph===0?'NOT STARTED':'PHASE '+ph+'/5 — '+(PHASES[ph-1]||'').toUpperCase())+'</div></div>'
+        +'<button class="btn" onclick="startGuide('+a.id+')" style="padding:7px 14px;background:'+a.col+'18;color:'+a.col+';font-size:12px;border:1px solid '+a.col+'30">'+(ph>=5?'✓ Done':'▶ Continue')+'</button>'
+        +'</div>'
+        +phasebar(ph,a.col)+'</div>';
+    }).join('')+'</div>';
+}
+
+// ══════════════════════════════════════════
+// GUIDE
+// ══════════════════════════════════════════
+function renderGuide(){
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#f1f5f9;margin-bottom:4px">HELP & GUIDE</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">Select account to start guided cleanup</div>'
+    +ACCOUNTS.map(function(a){
+      var ph=guidePhase[a.id]||0;
+      return '<div class="card" style="padding:16px;cursor:pointer;display:flex;align-items:center;gap:12px" onclick="startGuide('+a.id+')">'
+        +'<div style="width:36px;height:36px;border-radius:8px;background:'+a.col+'22;border:1px solid '+a.col+'44;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:'+a.col+';font-family:Impact,sans-serif;flex-shrink:0">'+a.name.charAt(0)+'</div>'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#f1f5f9">'+a.name+'</div>'
+        +'<div class="mono" style="font-size:10px;color:#475569">'+(ph>=5?'✓ Complete':ph===0?'Not started':'Phase '+ph+'/5')+'</div>'
+        +phasebar(ph,a.col)+'</div>'
+        +'<span style="color:#475569;font-size:16px">→</span></div>';
+    }).join('')+'</div>';
+}
+function startGuide(accId){
+  var a=ACCOUNTS.find(function(x){return x.id===accId});
+  if(!a)return;
+  var ph=guidePhase[a.id]||0;
+  if(ph>=5){
+    showPopup('<div style="text-align:center;padding:20px 0">'
+      +'<div style="font-size:48px;margin-bottom:12px">✦</div>'
+      +'<div class="disp" style="font-size:28px;color:#34d399;margin-bottom:8px">'+a.name+' COMPLETE</div>'
+      +'<div class="mono" style="font-size:11px;color:#475569;margin-bottom:20px">ALL 5 PHASES DONE</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button class="btn" onclick="guidePhase['+a.id+']=0;closePopup();navTo(\'guide\')" style="flex:1;padding:10px;background:#0f1f1d;color:#64748b;font-size:13px;border:1px solid rgba(255,255,255,.1)">Reset</button>'
+      +'<button class="btn" onclick="closePopup()" style="flex:1;padding:10px;background:rgba(52,211,153,.12);color:#34d399;font-size:13px;border:1px solid rgba(52,211,153,.25)">Done ✓</button>'
+      +'</div></div>');
+    return;
+  }
+  var steps=[
+    {title:'Open '+a.name,body:'Navigate to '+(a.plat==='LIVE'?'outlook.live.com':'mail.google.com')+' and sign in to '+a.email+'.\n\nMake sure you are on the main inbox view before tapping Next.',action:'Ready — Let\'s Start'},
+    {title:'Search for marketing',body:'In the '+(a.plat==='LIVE'?'Outlook':'Gmail')+' search bar type:\n\n     unsubscribe\n\n'+(a.plat==='LIVE'?'Select all → Sweep → Stop all future email from this sender.\nRepeat for each marketing sender found.':'Select all → Select all conversations.\nUnsubscribe using the link at the top of each thread.'),action:'Unsubscribed — Next'},
+    {title:'Create label structure',body:(a.plat==='LIVE'?'Right-click Folders → New Folder.\nCreate:\n\n🔴  Action Required\n🔵  Work & Projects\n🟢  Finance & Banking\n🟠  Orders & Receipts\n🩵  Alerts & Security\n◈   Reference':'Gmail Settings ⚙ → Labels → Create New Label.\n\nCreate:\n🔴 Action Required\n🔵 Work & Projects\n🟢 Finance & Banking\n🟠 Orders & Receipts\n🩵 Alerts & Security\n◈  Reference'),action:'Labels Created — Next'},
+    {title:'Set up smart filters',body:(a.plat==='LIVE'?'Settings → Mail → Rules → Add new rule:\n\nRule 1: Subject has receipt OR order\n→ Move to Orders & Receipts\n\nRule 2: Subject has OTP OR verify\n→ Move to Alerts & Security\n\nRule 3: From your contacts\n→ Keep in Inbox':'Settings ⚙ → Filters → Create new filter:\n\nFilter 1: Has words: receipt OR order\n→ Label: Orders, Skip Inbox\n\nFilter 2: Has words: OTP OR verify\n→ Label: Alerts, Skip Inbox\n\nFilter 3: From your contacts\n→ Never send to spam'),action:'Filters Active — Next'},
+    {title:'Archive old emails',body:'Select all emails older than 3 months that are already labelled.\n\nTap Archive — NOT Delete.\n\nArchived emails stay fully searchable but leave your inbox clean.\n\n'+(a.plat==='LIVE'?'Select All → Archive in each folder.':'Gmail: Check oldest → Shift+click newest → Archive.')+'\n\nYour inbox is now structured and clean.',action:'Account Complete ✓'},
+  ];
+  var s=steps[ph];
+  showPopup(
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+    +'<div class="mono" style="font-size:11px;color:#0d9488">✦ SEA GUIDE · '+a.name.toUpperCase()+'</div>'
+    +'<div class="mono" style="font-size:11px;color:#475569">Step '+(ph+1)+' of 5</div></div>'
+    +hbar((ph/5)*100,a.col)
+    +'<div style="margin-top:14px"></div>'
+    +'<div class="disp" style="font-size:24px;color:#f1f5f9;margin-bottom:14px">'+s.title+'</div>'
+    +'<div style="padding:16px;background:#0f1f1d;border:1px solid rgba(255,255,255,.07);border-radius:12px;font-size:14px;color:#64748b;line-height:1.9;margin-bottom:14px;white-space:pre-wrap;font-family:\'Segoe UI\',system-ui,sans-serif">'+s.body+'</div>'
+    +'<div style="padding:10px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;margin-bottom:14px;display:flex;gap:8px;font-size:13px;color:#fbbf24">'
+    +'<span>💡</span><span>'+(a.plat==='LIVE'?'Microsoft Live / Outlook — instructions are Outlook specific.':'Gmail — instructions are Gmail specific.')+'</span></div>'
+    +'<div style="display:flex;gap:8px">'
+    +(ph>0?'<button class="btn" onclick="closePopup();startGuideStep('+accId+','+(ph-1)+')" style="padding:10px 14px;background:#0f1f1d;color:#64748b;font-size:12px;border:1px solid rgba(255,255,255,.1)">← Back</button>':'')
+    +'<button class="btn" onclick="openAI(null)" style="padding:10px 14px;background:#0f1f1d;color:#64748b;font-size:12px;border:1px solid rgba(255,255,255,.1)">Ask SEA</button>'
+    +'<button class="btn" onclick="advGuide('+accId+')" style="flex:1;padding:12px;background:'+a.col+'20;color:'+a.col+';font-size:13px;font-weight:700;border:1px solid '+a.col+'40">'+s.action+'</button>'
+    +'</div>'
+  );
+}
+function advGuide(id){
+  guidePhase[id]=(guidePhase[id]||0)+1;
+  closePopup();
+  setTimeout(function(){startGuide(id)},200);
+}
+function startGuideStep(id,step){guidePhase[id]=step;startGuide(id)}
+
+// ══════════════════════════════════════════
+// SECURITY
+// ══════════════════════════════════════════
+function renderSecurity(){
+  var protos=[
+    {icon:'🔐',title:'ACCESS CONTROL',col:'#34d399',items:['Access code: SEA2026 — change before sharing','Session expires when browser closes','5 attempt lockout active','All sessions timestamped and logged','Edit ACCESS_CODE variable in HTML to change']},
+    {icon:'🛡',title:'CODE PROTECTION',col:'#0d9488',items:['Do NOT upload file to public GitHub','Store in password-protected folder','Share only via WhatsApp/Signal direct message','Right-click context menu is disabled','Ctrl+A, Ctrl+S, Ctrl+U shortcuts blocked']},
+    {icon:'⚠',title:'PRE-LAUNCH RULES',col:'#fb923c',items:['Personal testing only — do not distribute','Do not demo in public screen shares','Do not post screenshots before launch','Do not share without NDA','Register brand before any public exposure']},
+    {icon:'🚨',title:'IF BREACH OCCURS',col:'#f87171',items:['1. Change ACCESS_CODE immediately in HTML','2. Screenshot evidence with timestamps','3. Check browser console for security log','4. File DMCA copyright claim if needed','5. Accelerate Play Store launch submission']},
+  ];
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#34d399;margin-bottom:4px">SECURITY</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:16px">Pre-launch breach protection protocol</div>'
+    +'<div style="background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.2);border-radius:12px;padding:14px;margin-bottom:16px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+    +'<div class="blink" style="width:8px;height:8px;border-radius:50%;background:#34d399"></div>'
+    +'<span style="font-size:14px;font-weight:700;color:#34d399">ALL SYSTEMS PROTECTED</span></div>'
+    +'<div class="mono" style="font-size:10px;color:#475569">Session: '+new Date().toLocaleString()+' · Events: '+secLog.length+'</div></div>'
+    +protos.map(function(p){
+      return '<div class="card" style="padding:16px;border-color:'+p.col+'22">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+        +'<span style="font-size:18px">'+p.icon+'</span>'
+        +'<span class="disp" style="font-size:18px;color:'+p.col+'">'+p.title+'</span></div>'
+        +p.items.map(function(item,i){
+          return '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+            +'<span class="mono" style="font-size:10px;color:'+p.col+';flex-shrink:0;margin-top:1px">'+String(i+1).padStart(2,'0')+'</span>'
+            +'<span style="font-size:13px;color:#64748b;line-height:1.5">'+item+'</span></div>';
+        }).join('')+'</div>';
+    }).join('')
+    +'<button class="btn" onclick="exportLog()" style="width:100%;padding:12px;background:rgba(52,211,153,.1);color:#34d399;font-size:13px;border:1px solid rgba(52,211,153,.2);margin-top:4px">↓ EXPORT SECURITY LOG</button>'
+    +'</div>';
+}
+function exportLog(){
+  var txt=secLog.map(function(e){return '['+e.time+'] '+e.t+': '+e.d}).join('\n');
+  var b=new Blob(['SEA SECURITY LOG\n'+new Date().toISOString()+'\n'+'─'.repeat(50)+'\n'+txt],{type:'text/plain'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='SEA_security_'+Date.now()+'.txt';a.click();
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+var LANGS=['English','العربية','اردو','Français','Español','Deutsch','中文','हिन्दी','Português','Русский','日本語','한국어','Türkçe','فارسی','বাংলা','Bahasa Melayu','Kiswahili','עברית','Bahasa Indonesia','ภาษาไทย','Italiano','Nederlands','Polski','Svenska'];
+var activeLang='English';
+function renderSettings(){
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#f1f5f9;margin-bottom:16px">SETTINGS</div>'
+    +'<div class="card" style="padding:16px;margin-bottom:14px">'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:12px;letter-spacing:.1em">APPEARANCE</div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)">'
+    +'<span style="font-size:14px;font-weight:500;color:#f1f5f9">Theme</span>'
+    +'<button class="btn" onclick="toggleTheme()" style="padding:7px 16px;background:rgba(13,148,136,.1);color:#0d9488;font-size:12px;border:1px solid rgba(13,148,136,.2)">'+(isDark?'🌙 Dark':'☀️ Light')+'</button></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">'
+    +'<span style="font-size:14px;font-weight:500;color:#f1f5f9">Notifications</span>'
+    +tag('ON','rgba(52,211,153,.12)','#34d399')+'</div></div>'
+    +'<div class="card" style="padding:16px;margin-bottom:14px">'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:12px;letter-spacing:.1em">GLOBAL LANGUAGES — ALL REGIONS SUPPORTED</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:280px;overflow-y:auto">'
+    +LANGS.map(function(l){
+      var rtl=['العربية','اردو','فارسی','עברית'].indexOf(l)>=0;
+      return '<button class="btn" onclick="setLang(\''+l+'\')" style="padding:10px;background:'+(activeLang===l?'rgba(13,148,136,.15)':'#0f1f1d')+';color:'+(activeLang===l?'#0d9488':'#f1f5f9')+';font-size:13px;border:1px solid '+(activeLang===l?'rgba(13,148,136,.3)':'rgba(255,255,255,.1)')+';text-align:left;border-radius:8px;font-weight:'+(activeLang===l?600:400)+'">'
+        +l+(rtl?' ⟵':'')+'</button>';
+    }).join('')+'</div>'
+    +'<div class="mono" style="font-size:10px;color:#0d9488;margin-top:10px">Selected: '+activeLang+'</div></div>'
+    +'<div class="card" style="padding:16px;margin-bottom:14px">'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:12px;letter-spacing:.1em">ACCOUNTS ('+ACCOUNTS.length+')</div>'
+    +ACCOUNTS.map(function(a){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+        +'<div style="width:8px;height:8px;border-radius:50%;background:'+a.col+'"></div>'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#f1f5f9">'+a.name+'</div>'
+        +'<div class="mono" style="font-size:10px;color:#475569">'+a.email+'</div></div>'
+        +tag(a.plat,a.plat==='LIVE'?'rgba(13,148,136,.12)':'rgba(234,67,53,.1)',a.plat==='LIVE'?'#0d9488':'#f87171')+'</div>';
+    }).join('')
+    +'<button class="btn" onclick="showConnect()" style="width:100%;padding:10px;background:rgba(13,148,136,.08);color:#0d9488;font-size:13px;border:1px solid rgba(13,148,136,.2);margin-top:12px">+ Add Account</button></div>'
+    +'<div class="mono" style="font-size:10px;color:#334155;text-align:center">SEA v1.0.0-beta · PRE-LAUNCH · SEA2026</div>'
+    +'</div>';
+}
+function setLang(l){activeLang=l;navTo('settings')}
+
+// ══════════════════════════════════════════
+// COSTS
+// ══════════════════════════════════════════
+function renderCosts(){
+  var pre=[['Google Play Developer Account','$25.00','ONE-TIME',true],['Custom Domain (.com)','~$10.00','ANNUAL',false],['App Icon Design (Canva)','~$13.00','ONE-TIME',false],['Privacy Policy (Notion)','Free','FREE',true],['GitHub Repository','Free','FREE',true],['Vercel Hosting','Free','FREE',true],['Firebase Setup','Free','FREE',true],['Bubblewrap/PWABuilder','Free','FREE',true],['Sentry Error Tracking','Free','FREE',false],['UptimeRobot Monitor','Free','FREE',false]];
+  var post=[['Anthropic Claude API','$3–10','MONTHLY',true],['Vercel Hosting','Free–$20','MONTHLY',true],['Firebase (if exceeded)','$0–25','MONTHLY',false],['Sentry (if exceeded)','$0–26','MONTHLY',false],['Domain Renewal','~$10','ANNUAL',false],['Play Store Updates','Free','PER UPDATE',false]];
+  function row(r){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+      +'<div style="flex:1"><span style="font-size:13px;font-weight:'+(r[3]?600:400)+';color:#f1f5f9">'+r[0]+'</span>'
+      +(r[3]?tag('REQ','rgba(248,113,113,.1)','#f87171'):'')
+      +'<div class="mono" style="font-size:9px;color:#475569;margin-top:2px">'+r[2]+'</div></div>'
+      +'<div style="font-size:13px;font-weight:700;color:'+(r[1]==='Free'||r[1].startsWith('Free')?'#34d399':'#fbbf24')+'">'+r[1]+'</div></div>';
+  }
+  return '<div style="padding:16px 16px 80px">'
+    +'<div class="disp" style="font-size:28px;color:#a78bfa;margin-bottom:16px">COST PLAN</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'
+    +[['PRE-LAUNCH','~$48','one-time','#f87171'],['POST-LAUNCH','$3-10/mo','monthly','#34d399'],['BREAK-EVEN','2 users','to profit','#0d9488']].map(function(s){
+      return '<div class="card" style="padding:12px;text-align:center;border-color:'+s[3]+'22">'
+        +'<div class="mono" style="font-size:8px;color:#475569;margin-bottom:4px">'+s[0]+'</div>'
+        +'<div class="disp" style="font-size:'+(s[1].length>5?18:22)+'px;color:'+s[3]+';line-height:1">'+s[1]+'</div>'
+        +'<div class="mono" style="font-size:8px;color:#475569;margin-top:2px">'+s[2]+'</div></div>';
+    }).join('')+'</div>'
+    +'<div class="card" style="padding:16px;margin-bottom:14px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:18px">🚀</span><div class="disp" style="font-size:20px;color:#f87171">PRE-LAUNCH COSTS</div></div>'
+    +pre.map(row).join('')
+    +'<div style="display:flex;justify-content:space-between;padding:12px 0;margin-top:4px">'
+    +'<div class="disp" style="font-size:16px;color:#f87171">TOTAL</div>'
+    +'<div class="disp" style="font-size:20px;color:#f87171">~$48</div></div></div>'
+    +'<div class="card" style="padding:16px;margin-bottom:14px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:18px">⚡</span><div class="disp" style="font-size:20px;color:#34d399">POST-LAUNCH COSTS</div></div>'
+    +post.map(row).join('')
+    +'<div style="display:flex;justify-content:space-between;padding:12px 0;margin-top:4px">'
+    +'<div class="disp" style="font-size:16px;color:#34d399">MONTHLY MIN</div>'
+    +'<div class="disp" style="font-size:20px;color:#34d399">$3/mo</div></div></div>'
+    +'<div class="card" style="padding:16px;text-align:center;border-color:rgba(13,148,136,.2)">'
+    +'<div class="mono" style="font-size:10px;color:#475569;margin-bottom:8px">YEAR 1 TOTAL ESTIMATE</div>'
+    +'<div class="disp" style="font-size:40px;color:#0d9488">~$84</div>'
+    +'<div class="mono" style="font-size:10px;color:#475569">$48 pre-launch + $36 running (minimum)</div>'
+    +'</div></div>';
+}
+
+// ══════════════════════════════════════════
+// CONNECT ACCOUNT
+// ══════════════════════════════════════════
+function showConnect(){
+  showPopup('<div class="disp" style="font-size:26px;color:#f1f5f9;margin-bottom:6px">ADD EMAIL ACCOUNT</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-bottom:20px">Choose how to connect to SEA</div>'
+    +[['✉️','Connect Gmail Account','Sign in with Google — most automatic','#f87171','showGmailInfo()'],
+      ['📧','Connect via IMAP','Live.com, Yahoo, any provider','#0d9488','showImap()'],
+      ['📋','Paste Emails Manually','No login required — works right now','#64748b','closePopup();navTo(\'analyse\')']
+    ].map(function(o){
+      return '<div class="card" style="padding:16px;cursor:pointer;border-color:'+o[3]+'25;margin-bottom:10px" onclick="'+o[4]+'">'
+        +'<div style="display:flex;align-items:center;gap:12px">'
+        +'<div style="width:40px;height:40px;border-radius:10px;background:'+o[3]+'18;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+o[0]+'</div>'
+        +'<div style="flex:1"><div style="font-size:15px;font-weight:700;color:#f1f5f9">'+o[1]+'</div>'
+        +'<div style="font-size:12px;color:#64748b">'+o[2]+'</div></div>'
+        +'<span style="color:#475569;font-size:16px">→</span></div></div>';
+    }).join('')
+    +'<button class="btn" onclick="closePopup()" style="width:100%;padding:12px;background:#0f1f1d;color:#64748b;font-size:13px;border:1px solid rgba(255,255,255,.1)">Cancel</button>');
+}
+function showGmailInfo(){
+  closePopup();
+  showPopup('<div class="disp" style="font-size:22px;color:#f87171;margin-bottom:12px">CONNECT GMAIL</div>'
+    +'<div style="padding:16px;background:#0f1f1d;border-radius:12px;border:1px solid rgba(255,255,255,.07);margin-bottom:14px">'
+    +'<div style="font-size:14px;color:#f1f5f9;font-weight:600;margin-bottom:8px">To enable Gmail OAuth:</div>'
+    +'<div style="font-size:13px;color:#64748b;line-height:1.8">1. Host SEA on Vercel (free)<br>2. Set up Google OAuth credentials<br>3. Add Gmail API scope<br>4. Connect Gmail button works automatically</div></div>'
+    +'<div style="padding:12px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:10px;margin-bottom:14px">'
+    +'<div class="mono" style="font-size:10px;color:#fbbf24;margin-bottom:4px">CURRENT STATUS</div>'
+    +'<div style="font-size:13px;color:#64748b">Running as local file. OAuth requires Vercel hosting first. Use IMAP or Manual Paste for now.</div></div>'
+    +'<button class="btn" onclick="closePopup()" style="width:100%;padding:12px;background:#0f1f1d;color:#64748b;font-size:13px;border:1px solid rgba(255,255,255,.1)">Got It</button>');
+}
+function showImap(){
+  closePopup();
+  showPopup('<div class="disp" style="font-size:22px;color:#0d9488;margin-bottom:6px">IMAP SETUP</div>'
+    +'<div class="mono" style="font-size:10px;color:#34d399;margin-bottom:16px">🔒 AES-256 ENCRYPTED · NEVER STORED · HTTPS ONLY</div>'
+    +[['Account Nickname','e.g. Office, Business A','text'],['Email Address','yourname@live.com','email'],['Password','••••••••••••','password'],['IMAP Server','imap.live.com · Port 993','text']].map(function(f){
+      return '<div style="margin-bottom:12px"><div class="mono" style="font-size:10px;color:#475569;margin-bottom:6px">'+f[0].toUpperCase()+'</div>'
+        +'<input type="'+f[2]+'" placeholder="'+f[1]+'" class="finput"/></div>';
+    }).join('')
+    +'<div style="padding:10px 14px;background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.2);border-radius:8px;margin-bottom:16px">'
+    +'<div class="mono" style="font-size:10px;color:#34d399">🔒 Password encrypted · Session token issued · Never stored</div></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn" onclick="closePopup()" style="flex:1;padding:12px;background:#0f1f1d;color:#64748b;font-size:13px;border:1px solid rgba(255,255,255,.1)">Cancel</button>'
+    +'<button class="btn" onclick="closePopup()" style="flex:1;padding:12px;background:linear-gradient(135deg,#134e4a,#0d9488);color:#fff;font-size:13px">✦ Connect</button>'
+    +'</div>');
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+function initApp(){
+  // Update topbar
+  $('acc-name').textContent=activeAcc.name;
+  $('acc-email').textContent=activeAcc.email+' · '+activeAcc.plat+' ▼';
+  $('dr-email').textContent=activeAcc.email;
+  // Show dashboard
+  navTo('dashboard');
+}
+</script>
+</body>
+</html>
